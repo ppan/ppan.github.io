@@ -1,0 +1,123 @@
+#apiVersion: v1
+#kind: Secrete
+#metadata:
+#  name: elastic-certca
+#data:
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-configmap
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    #path.config: /usr/share/logstash/pipeline
+    xpack.monitoring.elasticsearch.hosts: [ "https://elasticdev-es-http.default.svc:9200" ]
+    xpack.monitoring.enabled: true
+    xpack.monitoring.elasticsearch.username: logstash_system
+    xpack.monitoring.elasticsearch.password: xxxxxxxxxxxxxxxxxxxx
+    xpack.monitoring.elasticsearch.ssl.certificate_authority: /usr/share/logstash/config/elasticsearch-certs/ca.crt
+  pipelines.yml: |
+    - pipeline.id: beats
+      queue.type: persisted
+      path.config: "/usr/share/logstash/pipeline/beats.conf"
+    - pipeline.id: b2c
+      queue.type: persisted
+      path.config: "/usr/share/logstash/pipeline/b2c.conf"
+  beats.conf: |
+    input {
+      beats {
+        id => beats
+        codec => "json"
+        port => 5044
+      }
+    }
+    output {
+      elasticsearch {
+        id => azure_es_dev
+        hosts => ["https://elasticdev-es-http.default.svc:9200"]
+        cacert => "/usr/share/logstash/config/elasticsearch-certs/ca.crt"
+        user => "logstash_writer"
+        password => "xxxxxxxxxxxxxxxxxxxx"
+        index => "log-beats-%{+YYYY.MM}"
+      }
+    }
+  b2c.conf: |
+    input {
+      azure_event_hubs {
+        codec => "json"
+        event_hub_connections => ["Endpoint=sb://<eventhub-b2c>.servicebus.windows.net/;SharedAccessKeyName=logstash;SharedAccessKey=xxxxxxxxxxxxxxxxxxxx;EntityPath=b2clog"]
+        threads => 2
+        decorate_events => true
+        consumer_group => "logstash"
+        storage_connection => "DefaultEndpointsProtocol=https;AccountName=<storage-b2c>;AccountKey=xxxxxxxxxxxxxxxxxxxx;EndpointSuffix=core.windows.net"
+        storage_container => "b2clog"
+      }
+    }
+    output {
+      elasticsearch {
+        id => azure_es_dev
+        hosts => ["https://elasticdev-es-http.default.svc:9200"]
+        cacert => "/usr/share/logstash/config/elasticsearch-certs/ca.crt"
+        user => "logstash_writer"
+        password => "xxxxxxxxxxxxxxxxxxxx"
+        index => "log-b2c-%{+YYYY.MM}"
+      }
+    }
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: elasticdev-logstash
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:7.6.2
+        ports:
+        - containerPort: 5044
+        volumeMounts:
+          - name: elastic-certca
+            mountPath: "/usr/share/logstash/config/elasticsearch-certs"
+          - name: config-volume
+            mountPath: /usr/share/logstash/config
+          - name: logstash-pipeline-volume
+            mountPath: /usr/share/logstash/pipeline
+      volumes:
+      - name: elastic-certca
+        secret:
+            secretName: elasticdev-kb-es-ca
+      - name: config-volume
+        configMap:
+          name: logstash-configmap
+          items:
+            - key: logstash.yml
+              path: logstash.yml
+            - key: pipelines.yml
+              path: pipelines.yml
+      - name: logstash-pipeline-volume
+        configMap:
+          name: logstash-configmap
+          items:
+            - key: beats.conf
+              path: beats.conf
+            - key: b2c.conf
+              path: b2c.conf
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: logstash-service
+spec:
+  selector:
+    app: logstash
+  ports:
+  - protocol: TCP
+    port: 5044
+    targetPort: 5044
+  type: ClusterIP

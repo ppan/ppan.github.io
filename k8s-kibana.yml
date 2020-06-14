@@ -1,0 +1,27 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: elasticdev
+spec:
+  version: 7.6.2
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 0.5
+          limits:
+            memory: 2Gi
+            cpu: 1
+  elasticsearchRef:
+    name: elasticdev
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+        loadBalancerIP: 123.45.67.89
+        loadBalancerSourceRanges:
+        - 123.45.67.99/32
