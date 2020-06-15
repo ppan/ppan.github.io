@@ -1,17 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Windows.Forms;
-using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using System.Web.Http.Description;
+using Owin;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Owin;
 using Microsoft.Owin.Cors;
 using Microsoft.Owin.Hosting;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.Owin.Security.Jwt;
 using Microsoft.Owin.Security.OAuth;
-using Owin;
 using Swashbuckle.Application;
 using Swashbuckle.Swagger;
 
