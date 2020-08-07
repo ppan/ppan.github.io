@@ -14,7 +14,7 @@
     kubectl apply -f .\k8s-schema-registry.yml
 	kubectl apply -f .\k8s-connect.yml
 
-[k8s-schema-registry.yml](k8s-schema-registry.yml)    [k8s-connect.yml](k8s-coonect.yml)
+[k8s-schema-registry.yml](k8s-schema-registry.yml)    [k8s-connect.yml](k8s-connect.yml)
 https://github.com/confluentinc/demo-scene/tree/master/kafka-connect-zero-to-hero
 
 ## MySQL Source Connector
